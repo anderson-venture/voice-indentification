@@ -48,9 +48,13 @@ short-circuits the expensive path. Non-speech never reaches either model.
 
 ## Quick start
 
-The project folder is self-contained: it carries its own CPython 3.8.10
-(`python38\`), its own packages (`venv\`) and its own weights (`models\`).
-There is no install step.
+This repository is the source half. The other half is the environment —
+`venv\` and `python38\`, 1.8 GB of binaries that GitHub will not take — which
+is distributed as a zip on Google Drive. [docs/SETUP.md](docs/SETUP.md) §1 has
+the link and the checksum, and is the only setup document you need.
+
+Once both halves are in place at `E:\Project\voice-indentification`, there is
+no install step:
 
 ```powershell
 cd E:\Project\voice-indentification
@@ -59,9 +63,8 @@ pytest                    # 255 passed, 2 skipped
 speakerid status
 ```
 
-It must live at that exact path, and it is installed on another machine by
-copying the whole folder there. [docs/SETUP.md](docs/SETUP.md) explains both,
-and is the only setup document you need.
+The folder must live at that exact path — `venv\` is not relocatable, and
+SETUP §4 says why.
 
 The suite makes **no network calls** (`tests/test_offline.py` enforces it) and
 skips rather than pretends when something is genuinely absent — `pytest -rs`
@@ -125,7 +128,7 @@ predicted.
 
 ```
 python38/     vendored CPython 3.8.10 -- the venv's interpreter and stdlib
-venv/         the environment, copied not installed (requirements.lock.txt)
+venv/         the environment. Not in git: see docs/SETUP.md §1b
 config/       default.yaml (tunables) + thresholds.yaml (site, ships EMPTY)
 models/       ONNX assets + MANIFEST.json, verified on every load
 src/speakerid/
@@ -134,7 +137,8 @@ src/speakerid/
   db/         schema.py, store.py (consent, retention, erasure), crypto.py
   scoring/    similarity.py, asnorm.py, decide.py (the ONLY decision point)
   pipeline.py challenge.py metrics.py cli.py api.py
-scripts/      fetch_models, export_onnx, build_cohort, calibrate, evaluate, make_fixtures
+scripts/      fetch_models, export_onnx, build_cohort, calibrate, evaluate,
+              make_fixtures, make_env_archive (cuts the SETUP §1b zip)
 docs/         SETUP.md, FIRST_RUN.md, DEVIATIONS.md, DPIA.md
 ```
 

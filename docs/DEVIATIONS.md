@@ -16,7 +16,7 @@ not installed. The project folder carries:
 * `python38\` — a verbatim copy of a CPython **3.8.10** install (62 MB).
   3.8.10 is the last release python.org published a Windows installer for, so
   the patch version is forced.
-* `venv\` — the environment itself (3.2 GB), with `venv\pyvenv.cfg` pointing
+* `venv\` — the environment itself (1.7 GB), with `venv\pyvenv.cfg` pointing
   `home` at `python38\` rather than at any system install.
 
 Installing on the offline machine is one `robocopy` to the identical absolute
@@ -99,7 +99,7 @@ and a single list hid it:
 | `requirements.lock.txt` | `pip freeze --all` of `venv\`: a record, not an install step |
 
 Versions are unchanged from §3. Keeping PyTorch in a file of its own makes it
-hard to install ~2.5 GB of export-time tooling onto a device by accident —
+hard to install 1.1 GB of export-time tooling onto a device by accident —
 though on this deployment it is already in `venv\`, because §10's replay
 fine-tuning is impossible without it and the target cannot install it later.
 

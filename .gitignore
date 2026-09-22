@@ -1,15 +1,17 @@
 # Never commit: biometric data, keys, or a local environment.
 #
-# venv/ and python38/ together are the interpreter and its packages. They are
-# ~3.3 GB of binaries, they are not source, and they are copied to the offline
-# machine by USB rather than by git (docs/SETUP.md).
+# venv/ and python38/ together are the interpreter and its packages: ~1.8 GB of
+# binaries, not source. They are distributed as an archive (docs/SETUP.md §2),
+# not through git. Two files inside venv/ are over GitHub's 100 MB hard limit
+# -- torch/lib/dnnl.lib at 617 MB and torch/lib/torch_cpu.dll at 232 MB -- so a
+# push that includes them is rejected outright. Do not uncomment these.
 #
 # NOTE: directory patterns below are anchored with a leading slash on purpose.
 # An unanchored "audio/" matches at ANY depth and silently excluded
 # src/speakerid/audio/ -- the whole front-end package -- from a clone.
-# .venv/
-# venv/
-# python38/
+.venv/
+venv/
+python38/
 __pycache__/
 *.py[cod]
 .pytest_cache/

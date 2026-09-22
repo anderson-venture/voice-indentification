@@ -1,20 +1,23 @@
 # Setup
 
-There is one supported way to install this system:
+Once assembled, the folder is self-contained: it carries its own CPython
+3.8.10 (`python38\`), its own packages (`venv\`) and its own model weights
+(`models\`). Nothing in it reads from `C:\`, from a package index, or from the
+internet.
 
-> Copy the folder `E:\Project\voice-indentification` to the offline machine,
-> to **the same absolute path**. Nothing else. No Python installer, no `pip`,
-> no network.
+It arrives in **two pieces**, because the environment is 1.8 GB of binaries and
+two files inside it are over GitHub's 100 MB hard limit:
 
-The folder is self-contained. It carries its own CPython 3.8.10 (`python38\`),
-its own packages (`venv\`), and its own model weights (`models\`). Nothing in
-it reads from `C:\`, from a package index, or from the internet.
+| Piece | Where | What |
+|---|---|---|
+| Source | this git repository | `src\`, `scripts\`, `tests\`, `config\`, `docs\`, `models\` |
+| Environment | Google Drive archive | `venv\` and `python38\` |
 
 ---
 
-## 1. Copy
+## 1. Assemble the folder
 
-On the offline machine, put the folder at exactly:
+Everything must end up at exactly this path:
 
 ```
 E:\Project\voice-indentification
@@ -23,17 +26,48 @@ E:\Project\voice-indentification
 Note the spelling: **indentification**, with the `n`. It is a typo in the
 original directory name and it is now load-bearing — see §4.
 
-Use a copy that preserves the whole tree. `robocopy` from the USB drive:
+**1a. Source.** Clone, or copy the working tree from another machine:
 
 ```powershell
-robocopy D:\voice-indentification E:\Project\voice-indentification /E
+git clone git@github.com:anderson-venture/voice-indentification.git E:\Project\voice-indentification
 ```
 
-Leave `data\` behind if the source machine has one. It holds the encrypted
-voiceprint database and the PBKDF2 salt, and a new site starts clean. If you
-deliberately migrate an existing database you must copy `data\.salt` with it
-**and** use the same passphrase, or every embedding fails to decrypt — and
-moving voiceprints between machines carries legal weight (`docs/DPIA.md`).
+**1b. Environment.** Download the archive and extract it so that `venv\` and
+`python38\` land directly inside the folder:
+
+```
+Drive link: <PASTE THE SHARE LINK HERE>
+File:       voice-indentification-env-py38-win64.zip
+SHA-256:    <PASTE THE CHECKSUM HERE>
+```
+
+```powershell
+cd E:\Project\voice-indentification
+Get-FileHash .\voice-indentification-env-py38-win64.zip -Algorithm SHA256   # compare first
+Expand-Archive .\voice-indentification-env-py38-win64.zip -DestinationPath . -Force
+Remove-Item .\voice-indentification-env-py38-win64.zip
+```
+
+Afterwards `E:\Project\voice-indentification\venv\Scripts\python.exe` and
+`E:\Project\voice-indentification\python38\python.exe` must both exist.
+
+Two things about Drive, both of which have wasted people's time:
+
+* A file this size cannot be virus-scanned, so Drive serves an HTML
+  interstitial instead of the zip to `curl` and `wget`. **Download it in a
+  browser**, or use a tool that handles the confirm token.
+* Check the SHA-256 before extracting. A truncated download produces a venv
+  that imports most things and then fails somewhere specific and confusing.
+
+The download needs a network, so it happens on a connected machine. To reach a
+fully offline machine, assemble the folder first and carry the whole thing on a
+USB drive.
+
+**1c. Leave `data\` behind.** It holds the encrypted voiceprint database and
+the PBKDF2 salt, and a new site starts clean. If you deliberately migrate an
+existing database you must copy `data\.salt` with it **and** use the same
+passphrase, or every embedding fails to decrypt — and moving voiceprints
+between machines carries legal weight (`docs/DPIA.md`).
 
 ## 2. Activate
 
@@ -110,7 +144,7 @@ install location and the same patch release. Any mismatch and the venv will
 not start.
 
 `python38\` is a verbatim copy of a CPython 3.8.10 install, 62 MB against
-venv's 3.2 GB. It makes the tree depend on nothing outside itself.
+venv's 1.7 GB. It makes the tree depend on nothing outside itself.
 
 This was verified, not assumed: with the machine's own Python 3.8 renamed out
 of the way, the full suite still passes and every dependency still imports.
@@ -126,27 +160,51 @@ ships with Windows 10 / Server 2016 and later.
 
 | Folder | Size | What |
 |---|---|---|
-| `venv\` | 3.2 GB | Packages. `requirements.lock.txt` records exactly what. |
+| `venv\` | 1.7 GB | Packages. `requirements.lock.txt` records exactly what. |
 | `python38\` | 62 MB | CPython 3.8.10, stdlib, `python38.dll`, VC runtime. |
 | `models\` | 25 MB | The three ONNX files + `MANIFEST.json`. |
 | `src\`, `scripts\`, `tests\`, `config\`, `docs\` | small | The project. |
 
-`venv\` is large because PyTorch is in it (~2.5 GB). PyTorch never runs on a
+`venv\` is large because PyTorch is in it (1.1 GB of the 1.7). PyTorch never runs on a
 deployed device — inference is ONNX Runtime only — but it is the only way to
 re-export a model or to fine-tune AASIST-L on replay recordings, which
 `docs/FIRST_RUN.md` shows is necessary before the countermeasure protects
 anything. On an offline machine it cannot be added later, so it is included.
 
-`venv\` and `python38\` are `.gitignore`d. They are binaries, not source, and
-they travel by USB.
+`venv\` and `python38\` are `.gitignore`d and distributed as the archive in
+§1b. Do not uncomment those ignore rules: `torch\lib\dnnl.lib` (617 MB) and
+`torch\lib\torch_cpu.dll` (232 MB) are both over GitHub's 100 MB hard limit,
+and a push containing them is rejected by the remote.
+
+### Rebuilding the archive
+
+After changing what is installed, re-cut it on the connected machine and
+replace the Drive file and the checksum in §1b:
+
+```powershell
+cd E:\Project\voice-indentification
+venv\Scripts\python -m scripts.make_env_archive      # prints size and SHA-256
+venv\Scripts\python -m pip freeze --all | Sort-Object | Out-File -Encoding utf8 requirements.lock.txt
+```
+
+The archive lands beside the project folder, never inside it. `--store` skips
+compression when the wait costs more than the upload does.
+
+Do not reach for `Compress-Archive` here: PowerShell 5.1's implementation
+buffers and gives up near 2 GB, which is close enough to this payload to bite.
+`scripts/make_env_archive.py` streams through `zipfile` with zip64 instead.
+
+`requirements.lock.txt` is committed, so the repo always records what the
+current archive contains. If they disagree, the archive is the truth.
 
 ## 7. You cannot install anything on the target
 
 There is no wheelhouse and no package index. `pip install` will fail, by
 design. If you need a package that is not in `requirements.lock.txt`, it has
-to be installed on a connected machine and the tree re-copied.
+to be installed on a connected machine, the archive re-cut, and the folder
+re-assembled.
 
-For the same reason: **keep the USB copy.** It is the only way back if `venv\`
+For the same reason: **keep the archive.** It is the only way back if `venv\`
 is damaged.
 
 ---
