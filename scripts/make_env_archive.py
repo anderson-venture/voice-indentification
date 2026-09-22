@@ -12,13 +12,12 @@ Run on the connected machine, from the project root::
 
     venv\\Scripts\\python -m scripts.make_env_archive
 
-It prints the SHA-256 to paste into `docs/SETUP.md` §1b beside the share link.
+Then upload the result and put the share link into `docs/SETUP.md` §1b.
 """
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import os
 import sys
 import time
@@ -57,14 +56,6 @@ def _collect(root: str) -> Tuple[List[Tuple[str, str]], int]:
                 entries.append((absolute, os.path.relpath(absolute, root)))
                 total += size
     return entries, total
-
-
-def _sha256(path: str) -> str:
-    digest = hashlib.sha256()
-    with open(path, "rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def main() -> None:
@@ -113,13 +104,12 @@ def main() -> None:
                 )
 
     size = os.path.getsize(output)
-    sys.stderr.write("hashing...\n")
     print("archive: {0}".format(output))
     print("files:   {0}".format(done))
     print("size:    {0:.2f} GB".format(size / float(1 << 30)))
-    print("sha256:  {0}".format(_sha256(output)))
+    print("took:    {0:.0f}s".format(time.time() - started))
     print("")
-    print("Upload it, then put the share link and this SHA-256 into docs/SETUP.md 1b.")
+    print("Upload it, then put the share link into docs/SETUP.md 1b.")
 
 
 if __name__ == "__main__":

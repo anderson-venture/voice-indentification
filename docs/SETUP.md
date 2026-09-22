@@ -38,26 +38,19 @@ git clone git@github.com:anderson-venture/voice-indentification.git E:\Project\v
 ```
 Drive link: <PASTE THE SHARE LINK HERE>
 File:       voice-indentification-env-py38-win64.zip
-SHA-256:    <PASTE THE CHECKSUM HERE>
 ```
+
+Download it **in a browser** — Drive serves an HTML page instead of the zip to
+`curl` and `wget` at this size. Then:
 
 ```powershell
 cd E:\Project\voice-indentification
-Get-FileHash .\voice-indentification-env-py38-win64.zip -Algorithm SHA256   # compare first
 Expand-Archive .\voice-indentification-env-py38-win64.zip -DestinationPath . -Force
 Remove-Item .\voice-indentification-env-py38-win64.zip
 ```
 
-Afterwards `E:\Project\voice-indentification\venv\Scripts\python.exe` and
-`E:\Project\voice-indentification\python38\python.exe` must both exist.
-
-Two things about Drive, both of which have wasted people's time:
-
-* A file this size cannot be virus-scanned, so Drive serves an HTML
-  interstitial instead of the zip to `curl` and `wget`. **Download it in a
-  browser**, or use a tool that handles the confirm token.
-* Check the SHA-256 before extracting. A truncated download produces a venv
-  that imports most things and then fails somewhere specific and confusing.
+Afterwards `venv\Scripts\python.exe` and `python38\python.exe` must both
+exist. §3 confirms the rest.
 
 The download needs a network, so it happens on a connected machine. To reach a
 fully offline machine, assemble the folder first and carry the whole thing on a
@@ -179,16 +172,16 @@ and a push containing them is rejected by the remote.
 ### Rebuilding the archive
 
 After changing what is installed, re-cut it on the connected machine and
-replace the Drive file and the checksum in §1b:
+replace the file on Drive:
 
 ```powershell
 cd E:\Project\voice-indentification
-venv\Scripts\python -m scripts.make_env_archive      # prints size and SHA-256
+venv\Scripts\python -m scripts.make_env_archive
 venv\Scripts\python -m pip freeze --all | Sort-Object | Out-File -Encoding utf8 requirements.lock.txt
 ```
 
 The archive lands beside the project folder, never inside it. `--store` skips
-compression when the wait costs more than the upload does.
+compression — much faster, about 1.8 GB out.
 
 Do not reach for `Compress-Archive` here: PowerShell 5.1's implementation
 buffers and gives up near 2 GB, which is close enough to this payload to bite.

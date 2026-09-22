@@ -51,7 +51,7 @@ short-circuits the expensive path. Non-speech never reaches either model.
 This repository is the source half. The other half is the environment —
 `venv\` and `python38\`, 1.8 GB of binaries that GitHub will not take — which
 is distributed as a zip on Google Drive. [docs/SETUP.md](docs/SETUP.md) §1 has
-the link and the checksum, and is the only setup document you need.
+the link, and is the only setup document you need.
 
 Once both halves are in place at `E:\Project\voice-indentification`, there is
 no install step:
