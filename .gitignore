@@ -35,3 +35,6 @@ __pycache__/
 # The ONNX models ARE committed: 25 MB total, largest file 22 MB, under
 # GitHub's limits. CLAUDE.md §4 allows git; it keeps `git clone` one step,
 # and MANIFEST.json checksums catch a corrupt copy on load.
+
+# Optional local wheelhouse for rebuilding the venv offline (docs/SETUP.md).
+/wheels/

@@ -35,7 +35,7 @@ models/
 4. Write the manifest:
 
    ```bash
-   make models          # python -m scripts.fetch_models
+   python -m scripts.fetch_models
    ```
 5. Commit the refreshed `.onnx` files and `MANIFEST.json`.
 

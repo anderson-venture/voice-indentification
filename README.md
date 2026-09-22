@@ -48,13 +48,15 @@ short-circuits the expensive path. Non-speech never reaches either model.
 
 ## Quick start
 
-```bash
-make venv          # Python 3.8 virtualenv
-make install-dev   # runtime + test/lint/type tools
-make check         # lint, typecheck, full suite
+```powershell
+py -3.8 -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt -r requirements-dev.txt
+$env:PYTHONPATH = "src"
+.venv\Scripts\python -m pytest
 ```
 
-Windows and the rest of the setup: [docs/SETUP.md](docs/SETUP.md).
+Full setup, including copying the installed tree to an offline machine:
+[docs/SETUP.md](docs/SETUP.md).
 
 The suite passes with **no network and no model weights**: tests that need
 real ONNX files skip rather than pretend (`pytest -rs` lists them).
@@ -63,7 +65,7 @@ real ONNX files skip rather than pretend (`pytest -rs` lists them).
 
 ```bash
 # 1. Models, on a connected machine, then transferred by USB
-make models                         # checksums into models/MANIFEST.json
+python -m scripts.fetch_models      # checksums into models/MANIFEST.json
 speakerid verify-models
 
 # 2. Cohort for AS-Norm: 200-500 clips of NON-enrolled people, in the room
