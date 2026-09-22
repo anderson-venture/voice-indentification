@@ -36,8 +36,8 @@ git clone git@github.com:anderson-venture/voice-indentification.git E:\Project\v
 `python38\` land directly inside the folder:
 
 ```
-Drive link: <PASTE THE SHARE LINK HERE>
-File:       voice-indentification-env-py38-win64.zip
+Drive link: https://drive.google.com/file/d/1MHoy-q3j0NVKxb3QmDo_vkuAaWR5iXsf/view
+File:       voice-indentification-env-py38-win64.zip   (433 MB, 42,821 files)
 ```
 
 Download it **in a browser** — Drive serves an HTML page instead of the zip to
