@@ -1,10 +1,15 @@
 # First real run — bring-up record
 
-First end-to-end execution with **real weights and real voices**, on
-CPython 3.8.20. This is a bring-up record, not a site calibration: the numbers
-below describe a public-sample corpus on a workstation, and say nothing about
-any deployment. Milestone 7 still has to be redone on the operator's own
-recordings, in the deployment room, on the deployment hardware.
+First end-to-end execution with **real weights and real voices**. This is a
+bring-up record, not a site calibration: the numbers below describe a
+public-sample corpus on a workstation, and say nothing about any deployment.
+Milestone 7 still has to be redone on the operator's own recordings, in the
+deployment room, on the deployment hardware.
+
+It was run on Linux under CPython 3.8.20, on a machine with a network, before
+this tree was moved to Windows and CPython 3.8.10. The corpus needed public
+downloads, so it cannot be reproduced on the offline machine. The findings
+below are about the models, not the platform, and still hold.
 
 ## What was run
 
@@ -112,16 +117,16 @@ from the inputs that should produce them; erasure is complete.
 5. **The FRR of 0.0000 is not credible** for a deployment. Clean read speech
    in quiet conditions is the easiest possible case.
 
-## Reproducing
+## Redoing this on your own recordings
 
 The corpus builder and trial-set scripts were kept out of the repository
 deliberately: they download from the public internet, and nothing in the
-shipped tree may do that. On a connected machine:
+shipped tree may do that. The steps below work offline, against recordings you
+capture on the deployment hardware — which is the run that actually matters:
 
 ```bash
-python -m scripts.fetch_models                 # checksums models/MANIFEST.json
-python -m speakerid.cli verify-models
-python -m speakerid.cli calibrate \
+speakerid verify-models
+speakerid calibrate \
     --trials trials.csv --cm-trials cm_trials.csv \
     --identification-trials ident.csv \
     --target-far 0.001 --cm-target-far 0.05 --site "<site>"

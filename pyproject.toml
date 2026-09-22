@@ -18,9 +18,14 @@ where = ["src"]
 line-length = 100
 # The deployment target is CPython 3.8; do not let a formatter emit newer syntax.
 target-version = ["py38"]
+# python38/ is a vendored copy of the CPython 3.8.10 install (see docs/SETUP.md).
+# It is not our code and parts of it are Python 2, so a bare `black .` must not
+# walk into it. venv/ is excluded by black's defaults; this is not.
+extend-exclude = "^/python38/"
 
 [tool.ruff]
 line-length = 100
+extend-exclude = ["python38", "venv"]
 # This is the setting that actually enforces the hard constraint in CLAUDE.md
 # §2: ruff flags 3.9+ builtin generics, 3.10+ `X | None` unions, match
 # statements and the rest, which would otherwise only fail on the device.

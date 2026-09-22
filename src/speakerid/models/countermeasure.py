@@ -13,7 +13,9 @@ excel on lab-generated synthetic audio routinely fail on physical replay.
 So this score is one signal, never a security guarantee. The defences that
 actually carry the weight are system-level: challenge-response (see
 ``speakerid.challenge``), a microphone array, and a second factor.
-See ``docs/THREAT_MODEL.md``.
+``docs/FIRST_RUN.md`` records this model failing on a real corpus, and
+CLAUDE.md §10 is the standing instruction to fine-tune it on physical replay
+before it protects anything.
 
 Interface contract::
 

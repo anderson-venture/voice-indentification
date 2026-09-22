@@ -5,57 +5,65 @@ it. Anything not listed here was implemented as specified.
 
 ---
 
-## 1. Python 3.8 provisioning (RESOLVED)
+## 1. Python 3.8 provisioning and distribution (RESOLVED)
 
-**Brief:** §2 — "Python 3.8.x."
+**Brief:** §2 — "Python 3.8.x." §3 — a wheelhouse built with `pip download`,
+installed with `pip install --no-index`.
 
-**How to get 3.8 per platform:**
+**What is done instead:** the interpreter and the environment are *copied*,
+not installed. The project folder carries:
 
-* **Windows** — `python-3.8.10-amd64.exe` from python.org. 3.8.10 is the last
-  release for which a Windows installer was published, so the patch version
-  is forced.
-* **Linux** — distro package where one exists. Ubuntu 24.04 ships no 3.8, has
-  no `python3-venv` and no system `pip`; this development machine therefore
-  uses a prebuilt portable CPython **3.8.20** from `python-build-standalone`
-  at `~/.local/share/cpython-3.8`. A genuine CPython, no root required. That
-  is a local development convenience only — nothing in the repository depends
-  on it.
+* `python38\` — a verbatim copy of a CPython **3.8.10** install (62 MB).
+  3.8.10 is the last release python.org published a Windows installer for, so
+  the patch version is forced.
+* `venv\` — the environment itself (3.2 GB), with `venv\pyvenv.cfg` pointing
+  `home` at `python38\` rather than at any system install.
 
-**The pins are verified, not assumed.** Every one installs on real 3.8.20:
+Installing on the offline machine is one `robocopy` to the identical absolute
+path. `docs/SETUP.md` is the procedure.
 
-    numpy 1.24.4 · scipy 1.10.1 · onnxruntime 1.19.2 · soundfile 0.12.1
-    librosa 0.10.2.post1 · sqlalchemy 2.0.36 · cryptography 43.0.3
-    pydantic 1.10.18 · click 8.1.7 · pyyaml 6.0.2 · onnx 1.16.2
-    pandas 2.0.3 · matplotlib 3.7.5 · pytest 8.3.4 · black 24.8.0
-    ruff 0.6.9 · mypy 1.14.1 · torch 2.4.1+cpu
+**Why not the wheelhouse in §3.** A wheelhouse still needs a Python 3.8 on the
+target, at a path the venv can find, of a matching patch release — and then a
+`pip install` step that can fail. Copying the interpreter removes all of it.
+It also removes the wheelhouse itself: there is no `wheels\` folder, and
+`pip install` on the target is expected to fail. The cost is that nothing new
+can be installed there, which is why the optional and export dependencies are
+installed up front (see the table below).
 
-The full suite, `ruff`, `black --check` and `mypy --strict` all pass under
-3.8.20. This closes the pin-validity half of milestone 1.
+**The pins are verified, not assumed.** Every package in
+`requirements.lock.txt` is installed and importable on Windows under CPython
+3.8.10, including `torch 2.4.1+cpu`, `torchaudio 2.4.1+cpu`, `onnxruntime
+1.19.2`, `numba 0.58.1` and `llvmlite 0.41.1`.
 
-### Distribution: plain git clone
+**Self-containment was tested, not assumed.** With the machine's own Python
+3.8 renamed out of the way, the full suite still passed (255 passed,
+2 skipped), every heavy dependency still imported, and `verify-models` still
+matched all three checksums. Nothing under `E:\Project\voice-indentification`
+reads from the system Python install.
 
-The project is distributed as a git repository, not as an offline bundle. The
-three ONNX models are committed (25 MB total, largest file 22 MB — under
-GitHub's limits), so `git clone` yields a working tree and `pip install -r
-requirements.txt` completes the setup. CLAUDE.md §4 permits exactly this
-("committed via git-lfs or shipped by USB").
+### Deviations from §3's package list
 
-An earlier iteration built platform-specific offline bundles carrying a
-portable CPython and a full wheelhouse. That was removed as unnecessary
-complexity once it was clear the target machine can reach a network at setup
-time. §2's "fully offline" constraint is about the **running system** — which
-still makes no network calls, enforced by `tests/test_offline.py` — not about
-`pip install`. If a genuinely air-gapped install is needed later, rebuild the
-wheelhouse with:
-
-    pip download -r requirements.txt -d wheels --only-binary=:all: \
-        --python-version 38 --platform <target-platform>
+* **`pandas` and `matplotlib` are not installed.** §3 lists both under dev
+  tooling, but no module in `src/`, `scripts/` or `tests/` imports either.
+  `scripts/evaluate.py` and `scripts/calibrate.py` compute DET points and
+  metrics with numpy and write JSON; plotting is left to whatever the
+  operator already has.
+* **`keyring` is installed but not in §3.** `crypto.key_source: keyring` is a
+  documented option in `config/default.yaml`, and on an offline machine an
+  uninstallable option is a dead end. The default remains `passphrase`.
+* **`fastapi` / `uvicorn` are installed**, per §3's "Optional local API". The
+  CLI does not need them.
 
 ### Two things the pinned toolchain caught
 
 * `ruff` 0.6.9 rejects the selector `UP045`, which had been added to the
   ignore list for a newer ruff. Removed.
-* `black` 24.8.0 wanted 31 files reformatted. Applied; §12 asks for it.
+* `black` 24.8.0 wanted files reformatted. Applied; §12 asks for it.
+
+`pyproject.toml` excludes `python38\` and `venv\` from both `ruff` and
+`black`. Without that, a bare `ruff check .` walks into the vendored stdlib
+and reports 13,611 errors, including Python 2 syntax in the bundled Tcl
+support files.
 
 ### Local-only mypy note
 
@@ -66,20 +74,34 @@ rather than by authorship; the bodies are still fully checked. `scripts/` is
 excluded because §12 requires strict typing of `src/`, and the scripts are
 development tooling covered by ruff and the tests.
 
-### Requirements files renamed (§3)
+### `import speakerid` without an install
+
+The package is not `pip install`ed. `venv\Lib\site-packages\_speakerid_src.pth`
+holds the relative path `..\..\..\src`, which `site` resolves against
+site-packages at startup. This replaces the `PYTHONPATH=src` that earlier
+instructions used, works in every process without shell setup, and survives
+relocation because it is relative. `venv\Scripts\speakerid.bat` provides the
+`speakerid` command in place of a pip-generated `.exe`, for the same reason:
+it calls `%~dp0python.exe`, relative to itself.
+
+### Requirements files (§3)
 
 §3 shows a single `requirements.lock.txt` holding runtime and dev pins
-together. That is split into three files with plainer names, because the
-distinction matters operationally and a single list hid it:
+together. There are five files, because the distinction matters operationally
+and a single list hid it:
 
 | File | Contents |
 |---|---|
 | `requirements.txt` | the §3 "Runtime (required, offline)" block |
 | `requirements-dev.txt` | pytest, pytest-cov, black, ruff, mypy |
+| `requirements-optional.txt` | fastapi, uvicorn, keyring |
 | `requirements-export.txt` | torch, torchaudio, onnx, onnxsim — §4's "dev/export only" |
+| `requirements.lock.txt` | `pip freeze --all` of `venv\`: a record, not an install step |
 
 Versions are unchanged from §3. Keeping PyTorch in a file of its own makes it
-hard to install ~2 GB of export-time tooling onto a device by accident.
+hard to install ~2.5 GB of export-time tooling onto a device by accident —
+though on this deployment it is already in `venv\`, because §10's replay
+fine-tuning is impossible without it and the target cannot install it later.
 
 ---
 
@@ -279,6 +301,36 @@ that fine. Added `--cm-target-far`, defaulting to `--target-far`.
 
 ---
 
+## 6c. Bug found only by running on Windows
+
+### The PBKDF2 salt was corrupted by Windows text mode
+
+`_load_or_create_salt()` created the salt with
+
+    os.open(salt_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+
+On Windows a descriptor opened without `os.O_BINARY` is in **text mode**, and
+`os.write` expands every `0x0A` byte to `0x0D 0x0A`. A random 16-byte salt
+contains at least one `0x0A` about 6% of the time, so roughly one salt in
+sixteen was written 17 bytes or longer.
+
+The length check on the read path turned that into a `CryptoError` on the next
+run rather than a silently wrong key, which is the right failure — but it is
+still a database that cannot be opened, and the 6% rate made it look like
+flakiness rather than a bug. It first appeared as an intermittent
+`test_delete_requires_confirmation` failure: *salt file ... is 17 bytes,
+expected 16*.
+
+Fixed by adding `getattr(os, "O_BINARY", 0)` to the flags — the constant does
+not exist on POSIX. `tests/test_crypto.py::test_salt_survives_newline_bytes`
+pins `os.urandom` to a salt containing `0x0A`, `0x0D` and `0x1A` and asserts a
+byte-for-byte round trip; it fails without the flag.
+
+This is why §12's "pytest must pass" is not the same statement as "pytest
+passed once". The suite had passed on Linux, where the flag is meaningless.
+
+---
+
 ## 7. Not implemented
 
 Honest scope statement. None of these are stubbed as if they worked.
@@ -291,7 +343,7 @@ Honest scope statement. None of these are stubbed as if they worked.
 | Microphone-array direction-of-arrival | §10.2 | Not implemented — single-channel only. Requires hardware. |
 | INT8 quantisation / device port | §13 milestone 9 | Not started, as instructed: milestone 7 comes first. |
 | CAM++ fallback embedder | §5 | Supported by configuration (`embedder.model_path`); not fetched, no A/B run. |
-| Offline wheelhouse | §3, milestone 1 | Removed. The project installs from PyPI after `git clone`; §3's `pip download` recipe still applies if a genuinely air-gapped install is needed. |
+| Offline wheelhouse | §3, milestone 1 | Removed, and not needed: `venv\` and `python38\` are copied to the target whole, so there is nothing to install there. See §1. |
 | AS-Norm cohort | §9.3 | No cohort built: the available corpus has two speakers, and a cohort drawn from the enrolled speakers would normalise against the wrong distribution. AS-Norm was disabled for the demo run. |
 
 ---

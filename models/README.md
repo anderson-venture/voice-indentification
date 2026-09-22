@@ -16,7 +16,10 @@ models/
 └── cm/aasist_l.onnx       # AASIST-L             MIT
 ```
 
-## Acquisition, on a connected machine
+All three files are present and verified. `speakerid verify-models` is the
+only model command you need on the offline machine.
+
+## Re-acquiring or re-exporting — connected machine only
 
 1. Fetch the exports. The quickest path is the `speakeronnx` PyPI package,
    which registers ready-made ONNX exports including `redimnet-b2`,
@@ -41,19 +44,36 @@ models/
 
 ## Interface contracts
 
+These are the signatures of the files actually in this folder, read back from
+the ONNX graphs. They differ from the contract stated in CLAUDE.md §5 in two
+places, both noted below and both handled in code.
+
 ```python
-# Embedder
-input:  float32 [1, N]      # 16 kHz mono, N = 64000..96000
-output: float32 [1, 192]    # L2-normalized
+# Embedder -- models/embed/redimnet2_b2.onnx
+input:  "audio"     float32 [B, 1, T_samples]   # 16 kHz mono, T = 64000..96000
+output: "embs"      float32 [B, 192]
 
-# Countermeasure (AASIST-L)
-input:  float32 [1, 64600]  # 16 kHz, ~4.04 s
-output: float32 [1, 2]      # logits; softmax, index 1 = bona fide
+# Countermeasure -- models/cm/aasist_l.onnx
+input:  "waveform"  float32 [batch, 64600]      # 16 kHz, ~4.04 s
+output: "logits"    float32 [batch, 2]          # softmax; index 1 = bona fide
 
-# VAD (Silero v5)
-input:  input [1, 512], state [2, 1, 128], sr int64
-output: output [1, 1], stateN [2, 1, 128]
+# VAD -- models/vad/silero_vad.onnx
+input:  "input" [B, 512], "state" [2, B, 128], "sr" int64 scalar
+output: "output" [B, 1], "stateN" [2, B, 128]
 ```
+
+Two differences from CLAUDE.md §5:
+
+1. **The embedder input is rank 3**, `[B, 1, T]`, not `[1, N]`.
+   `embedder._shape_waveform()` reads the declared rank and reshapes to match,
+   so both rank-2 and rank-3 exports work.
+2. **The embedder output is not L2-normalized.** A real window comes back with
+   a norm around 18. `embed_window()` normalizes before returning, so the
+   `(192,)` vector the rest of the system sees is unit-norm as documented —
+   but do not assume the raw graph output is.
+
+Input names are read from the session, never hardcoded, so a re-export that
+renames them still works.
 
 `speakerid verify-models` checks every file against the manifest. A mismatch
 refuses to start: a silently swapped model is invisible until the accuracy

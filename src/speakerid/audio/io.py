@@ -39,16 +39,12 @@ def ensure_audio(
     """
     if sample_rate != TARGET_SAMPLE_RATE:
         raise AudioError(
-            "{0}: sample rate must be {1} Hz, got {2}".format(
-                name, TARGET_SAMPLE_RATE, sample_rate
-            )
+            "{0}: sample rate must be {1} Hz, got {2}".format(name, TARGET_SAMPLE_RATE, sample_rate)
         )
     if not isinstance(samples, np.ndarray):
         raise AudioError("{0}: expected np.ndarray, got {1}".format(name, type(samples).__name__))
     if samples.ndim != 1:
-        raise AudioError(
-            "{0}: expected mono 1-D array, got shape {1}".format(name, samples.shape)
-        )
+        raise AudioError("{0}: expected mono 1-D array, got shape {1}".format(name, samples.shape))
     if samples.dtype != np.float32:
         raise AudioError("{0}: expected float32, got {1}".format(name, samples.dtype))
     if samples.size and not np.all(np.isfinite(samples)):

@@ -48,24 +48,29 @@ short-circuits the expensive path. Non-speech never reaches either model.
 
 ## Quick start
 
+The project folder is self-contained: it carries its own CPython 3.8.10
+(`python38\`), its own packages (`venv\`) and its own weights (`models\`).
+There is no install step.
+
 ```powershell
-py -3.8 -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt -r requirements-dev.txt
-$env:PYTHONPATH = "src"
-.venv\Scripts\python -m pytest
+cd E:\Project\voice-indentification
+venv\Scripts\Activate.ps1
+pytest                    # 255 passed, 2 skipped
+speakerid status
 ```
 
-Full setup, including copying the installed tree to an offline machine:
-[docs/SETUP.md](docs/SETUP.md).
+It must live at that exact path, and it is installed on another machine by
+copying the whole folder there. [docs/SETUP.md](docs/SETUP.md) explains both,
+and is the only setup document you need.
 
-The suite passes with **no network and no model weights**: tests that need
-real ONNX files skip rather than pretend (`pytest -rs` lists them).
+The suite makes **no network calls** (`tests/test_offline.py` enforces it) and
+skips rather than pretends when something is genuinely absent — `pytest -rs`
+names the two skips.
 
 ### Deploying
 
 ```bash
-# 1. Models, on a connected machine, then transferred by USB
-python -m scripts.fetch_models      # checksums into models/MANIFEST.json
+# 1. Models are already in models/ and checksummed; confirm they survived the copy
 speakerid verify-models
 
 # 2. Cohort for AS-Norm: 200-500 clips of NON-enrolled people, in the room
@@ -84,7 +89,13 @@ speakerid consent --person-id alice --granted-by "J. Operator"
 speakerid enroll --person-id alice --room-id lobby a1.wav a2.wav a3.wav
 
 # 5. Measure. This is the milestone that tells you whether it works.
-speakerid evaluate --trials heldout.csv --report reports/eval.json
+#    Use scripts.evaluate, not `speakerid evaluate`: only it takes
+#    --identification-trials, and open-set impostor rejection is the number
+#    that matters (CLAUDE.md §8). `speakerid evaluate` reports verification
+#    metrics only.
+python -m scripts.evaluate --trials heldout.csv \
+    --identification-trials ident.csv --cm-trials replay_trials.csv \
+    --report reports/eval.json
 
 # 6. Use
 speakerid identify sample.wav
@@ -105,26 +116,18 @@ FAR on your own recordings — not at EER, and never by copying a benchmark.
 **The countermeasure is not a security guarantee.** AASIST-L's benchmark is
 synthetic speech, not a phone held up to the microphone. Until it is
 fine-tuned on your own replay recordings and the challenge-response digit
-verifier is implemented, replay resistance is low. See
-[docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) §4 — the operator must sign it.
-
-## Privacy
-
-Voiceprints are biometric data under BIPA, CUBI, My Health My Data and GDPR
-Art. 9. Enforced in code: no consent row, no enrolment; every record carries
-an expiry and is purged automatically; embeddings are AES-256-GCM encrypted
-and bound to their subject; raw audio is discarded after extraction unless
-explicitly retained; `delete_subject()` is complete and tested; logs carry
-person IDs and scores, never names or audio.
-
-The operator must consult counsel and complete
-[docs/DPIA.md](docs/DPIA.md) **before the first enrolment**.
+verifier is implemented, **replay resistance is low** — do not put this in
+front of anything valuable, and treat voice as one factor rather than the only
+one. [docs/FIRST_RUN.md](docs/FIRST_RUN.md) has this measured rather than
+predicted.
 
 ## Layout
 
 ```
+python38/     vendored CPython 3.8.10 -- the venv's interpreter and stdlib
+venv/         the environment, copied not installed (requirements.lock.txt)
 config/       default.yaml (tunables) + thresholds.yaml (site, ships EMPTY)
-models/       ONNX assets + MANIFEST.json -- by USB, never in git
+models/       ONNX assets + MANIFEST.json, verified on every load
 src/speakerid/
   audio/      io.py (the 16 kHz contract), vad.py, enhance.py (off by default)
   models/     base.py (sessions, warmup, checksums), embedder.py, countermeasure.py
@@ -132,14 +135,15 @@ src/speakerid/
   scoring/    similarity.py, asnorm.py, decide.py (the ONLY decision point)
   pipeline.py challenge.py metrics.py cli.py api.py
 scripts/      fetch_models, export_onnx, build_cohort, calibrate, evaluate, make_fixtures
-docs/         DEVIATIONS.md, THREAT_MODEL.md, DPIA.md
+docs/         SETUP.md, FIRST_RUN.md, DEVIATIONS.md, DPIA.md
 ```
 
 ## Status
 
-Milestones 2–8 are implemented and tested on **CPython 3.8.20 with real ONNX
-weights**: 255 tests pass, and `ruff`, `black` and `mypy --strict` are clean
-under the pinned toolchain. Not yet run on Windows.
+Milestones 2–8 are implemented. Verified on **Windows, CPython 3.8.10, with
+real ONNX weights**: 255 tests pass and 2 skip, and `ruff`, `black` and
+`mypy --strict` are clean. The three models load, warm up and run, and
+`verify-models` matches every checksum.
 
 The system has been run end to end on real voices — see
 [docs/FIRST_RUN.md](docs/FIRST_RUN.md) for the measured numbers and, more

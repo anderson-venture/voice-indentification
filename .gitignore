@@ -1,10 +1,15 @@
 # Never commit: biometric data, keys, or a local environment.
 #
+# venv/ and python38/ together are the interpreter and its packages. They are
+# ~3.3 GB of binaries, they are not source, and they are copied to the offline
+# machine by USB rather than by git (docs/SETUP.md).
+#
 # NOTE: directory patterns below are anchored with a leading slash on purpose.
 # An unanchored "audio/" matches at ANY depth and silently excluded
 # src/speakerid/audio/ -- the whole front-end package -- from a clone.
-.venv/
-venv/
+# .venv/
+# venv/
+# python38/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -35,6 +40,3 @@ __pycache__/
 # The ONNX models ARE committed: 25 MB total, largest file 22 MB, under
 # GitHub's limits. CLAUDE.md §4 allows git; it keeps `git clone` one step,
 # and MANIFEST.json checksums catch a corrupt copy on load.
-
-# Optional local wheelhouse for rebuilding the venv offline (docs/SETUP.md).
-/wheels/

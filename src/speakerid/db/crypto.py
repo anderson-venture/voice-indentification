@@ -61,7 +61,12 @@ def _load_or_create_salt(salt_path: str) -> bytes:
     salt = os.urandom(SALT_BYTES)
     # Create with restrictive permissions from the start, never chmod after:
     # a window where the file exists world-readable is a window too many.
-    descriptor = os.open(salt_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    # O_BINARY matters on Windows: without it os.write translates every 0x0A
+    # byte in the random salt into CR LF, so roughly one salt in sixteen comes
+    # back a byte longer than it was written and the database it keyed becomes
+    # unreadable. The flag does not exist on POSIX, hence the getattr.
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+    descriptor = os.open(salt_path, flags, 0o600)
     try:
         os.write(descriptor, salt)
     finally:

@@ -76,7 +76,7 @@ To be completed by the operator, and the hardest section to pass:
 |---|---|---|---|---|
 | Voiceprint database stolen | Low | **Severe** — irrevocable identifiers | AES-GCM at rest, key held outside the DB, offline host | Key compromise or memory disclosure while running |
 | Wrong person admitted | **Medium** | High | Target-FAR calibration, margin check, AS-Norm, `UNKNOWN` bias | Unknown until milestone 7 |
-| Replay attack succeeds | **Medium–High** | High | CM before embedder; challenge-response scaffolding | **High** until the digit verifier is implemented and the CM is fine-tuned — see `THREAT_MODEL.md` §4 |
+| Replay attack succeeds | **Medium–High** | High | CM before embedder; challenge-response scaffolding | **High** until the digit verifier is implemented and the CM is fine-tuned on physical replay. AASIST-L's published EER is synthetic speech, not a speaker played into a room; `FIRST_RUN.md` measures it failing on this corpus. Voice must be one factor, not the only one. |
 | Bystander audio processed | High | Low–Medium | Audio discarded immediately; nothing stored for unknown speakers | Transient processing still occurs |
 | Retention overrun | Low | Medium | Enforced in code, not by procedure | Requires the process to actually run |
 | Function creep (attendance, productivity) | **Medium** | High | Purpose stated here; events hold ids and scores only | **Operator governance.** The likeliest way this system becomes unlawful. |

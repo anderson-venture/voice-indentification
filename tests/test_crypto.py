@@ -7,6 +7,7 @@ import os
 import numpy as np
 import pytest
 
+from speakerid.db import crypto
 from speakerid.db.crypto import (
     KEY_BYTES,
     MAGIC,
@@ -155,6 +156,23 @@ def test_salt_file_is_created_on_any_platform(base_config, monkeypatch):
     assert os.path.isfile(salt_path)
     with open(salt_path, "rb") as handle:
         assert len(handle.read()) == SALT_BYTES
+
+
+def test_salt_survives_newline_bytes(base_config, monkeypatch):
+    """A salt containing 0x0A must round-trip byte for byte.
+
+    Windows opens a descriptor in text mode unless O_BINARY is passed, which
+    turns each 0x0A into CR LF. Roughly one random salt in sixteen contains a
+    0x0A, so without the flag the failure is intermittent and lands as an
+    unreadable database rather than as a test failure.
+    """
+    monkeypatch.setenv("SPEAKERID_KEY", "abc")
+    salty = b"\x0a" * 4 + b"\x0d\x1a" + b"\xff" * 10
+    assert len(salty) == SALT_BYTES
+    monkeypatch.setattr(crypto.os, "urandom", lambda n: salty[:n])
+    resolve_key(base_config)
+    with open(base_config.resolve_path("crypto.salt_path"), "rb") as handle:
+        assert handle.read() == salty
 
 
 def test_salt_is_stable_across_calls(base_config, monkeypatch):

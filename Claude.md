@@ -92,22 +92,36 @@ mypy==1.14.1
 
 ### Setup
 
-```bash
-python3.8 -m venv .venv
-source .venv/bin/activate
-pip install --no-index --find-links=vendor/wheels -r requirements.lock.txt
+There is no install step and no wheelhouse. The project folder is
+self-contained and is installed by copying it to **the same absolute path**,
+`E:\Project\voice-indentification`:
+
+```powershell
+cd E:\Project\voice-indentification
+venv\Scripts\Activate.ps1
+pytest                              # 255 passed, 2 skipped
 ```
 
-### Building the offline wheelhouse (run ONCE on a connected machine)
+It carries its own interpreter (`python38\`, CPython 3.8.10), its own packages
+(`venv\`) and its own weights (`models\`). `venv\pyvenv.cfg` points `home` at
+`python38\`, so nothing outside the folder is read — verified by renaming the
+machine's own Python 3.8 away and re-running the suite.
 
-```bash
-# On the connected machine, same OS/arch/python as the target:
-pip download -r requirements.lock.txt -d vendor/wheels --python-version 38 \
-    --only-binary=:all: --platform manylinux2014_x86_64
-```
+`venv\` is **not** relocatable: `pyvenv.cfg` and the `.exe` launchers in
+`venv\Scripts\` hold absolute paths. Moving the folder means editing
+`pyvenv.cfg`. `docs/SETUP.md` is the full procedure and the only setup
+document; read it before touching the environment.
 
-Then transfer `vendor/wheels/` and `models/` to the offline machine by USB.
-Everything after that must work with `--no-index`.
+An earlier version of this brief specified a `pip download` wheelhouse into
+`vendor/wheels/`. That was dropped: a wheelhouse still needs a matching Python
+on the target and a `pip install` that can fail. `docs/DEVIATIONS.md` §1
+records the change. On the target, **`pip install` is expected to fail** —
+anything new must be installed on a connected machine and the tree re-copied.
+
+`requirements.lock.txt` is a `pip freeze --all` record of what is in `venv\`,
+not an install input. The four intent files are `requirements.txt` (runtime),
+`-dev.txt`, `-optional.txt` (fastapi, uvicorn, keyring) and `-export.txt`
+(torch, torchaudio, onnx, onnxsim).
 
 ---
 
@@ -116,7 +130,10 @@ Everything after that must work with `--no-index`.
 ```
 .
 ├── CLAUDE.md                   # this file
-├── requirements.lock.txt
+├── requirements.lock.txt       # pip freeze of venv/ — a record, not an install
+├── requirements{,-dev,-optional,-export}.txt
+├── python38/                   # vendored CPython 3.8.10; venv/'s interpreter
+├── venv/                       # the environment, copied not installed — see §3
 ├── config/
 │   ├── default.yaml            # all tunables; NO hardcoded constants in code
 │   └── thresholds.yaml         # calibrated per deployment site — see §8
@@ -155,9 +172,11 @@ Everything after that must work with `--no-index`.
 │   ├── fixtures/               # tiny synthetic wavs, committed
 │   └── ...
 └── docs/
+    ├── SETUP.md                # the only install procedure; see §3
+    ├── FIRST_RUN.md            # bring-up record: what the real models did
     ├── DEVIATIONS.md
-    ├── THREAT_MODEL.md
-    └── DPIA.md                 # data protection impact assessment
+    └── DPIA.md                 # data protection impact assessment, and the
+                                # operator sign-off on residual risk (§10)
 ```
 
 ---
@@ -338,8 +357,9 @@ Therefore:
    plus yours.
 3. **Multi-factor.** Voice + badge, or voice + face. Voice alone is a weak
    credential in 2026 and weakening: a 10-second clip from a public video is enough
-   for zero-shot cloning. Document this in `docs/THREAT_MODEL.md` and make sure the
-   operator has signed off on the residual risk.
+   for zero-shot cloning. Document this in `docs/DPIA.md` — §5 Risks carries the
+   replay row, §7 is the sign-off — and make sure the operator has signed off on
+   the residual risk before the first enrolment.
 
 ---
 
@@ -398,7 +418,7 @@ Non-negotiable in code:
 
 | # | Milestone | Done when |
 |---|---|---|
-| 1 | Env + wheelhouse + model manifest | `pip install --no-index` works on an air-gapped box |
+| 1 | Env + model manifest | The copied folder runs `pytest` and `verify-models` on an air-gapped box with no install step |
 | 2 | Audio IO + VAD | Segments on a noisy fixture match hand-labels ±100 ms |
 | 3 | Embedder + parity test | Cosine ≥ 0.9999 vs PyTorch reference |
 | 4 | DB + enroll/delete CLI | Round-trip encrypted, `delete_subject` verified |

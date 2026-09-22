@@ -1,0 +1,11 @@
+# Optional extras. Installed in venv/ because the target machine is offline and
+# nothing can be added there later.
+#
+#   fastapi, uvicorn  -- src/speakerid/api.py, the localhost-only HTTP API.
+#                        The CLI does not need them.
+#   keyring           -- only used when config/default.yaml sets
+#                        crypto.key_source: keyring. The default is passphrase.
+
+fastapi==0.110.3
+uvicorn==0.33.0
+keyring==25.5.0

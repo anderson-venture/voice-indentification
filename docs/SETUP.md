@@ -1,127 +1,178 @@
 # Setup
 
-Two machines:
+There is one supported way to install this system:
 
-* **BUILD** — has a network. Installs everything once.
-* **TARGET** — fully offline. Receives a copy and runs it.
+> Copy the folder `E:\Project\voice-indentification` to the offline machine,
+> to **the same absolute path**. Nothing else. No Python installer, no `pip`,
+> no network.
 
-The plan is to copy the whole project folder, `.venv` included, so the target
-needs no installation step at all. That works, but only if three things match
-on both machines. Getting any of them wrong produces a venv that will not
-start, so they are worth reading before you begin.
-
-| Must match | Why |
-|---|---|
-| **Operating system and architecture** | The venv holds compiled binaries. Windows needs `.pyd`; Linux `.so`. A venv never survives crossing operating systems. |
-| **Absolute project path** | Launchers in `.venv\Scripts\` hardcode their own location. Use the same path on both, e.g. `E:\project\voice-indentification`. |
-| **Python 3.8 install path** | `.venv\pyvenv.cfg` records a `home = ...` pointing at the base Python, and the **standard library is loaded from there** — the venv contains only `site-packages`. If the base Python is missing or elsewhere on the target, the venv cannot start. |
-
-The third one catches people out. Install Python **for all users**, so it
-lands in `C:\Program Files\Python38` on both machines rather than
-`C:\Users\<name>\AppData\...`, which differs whenever the usernames differ.
+The folder is self-contained. It carries its own CPython 3.8.10 (`python38\`),
+its own packages (`venv\`), and its own model weights (`models\`). Nothing in
+it reads from `C:\`, from a package index, or from the internet.
 
 ---
 
-## 1. BUILD machine (with network)
+## 1. Copy
 
-Install **Python 3.8.10** — the last version python.org published a Windows
-installer for, so the patch version is forced:
+On the offline machine, put the folder at exactly:
 
-<https://www.python.org/ftp/python/3.8.10/python-3.8.10-amd64.exe>
-
-In the installer: tick **"Add Python 3.8 to PATH"**, choose **"Customize
-installation"**, then on the second page tick **"Install for all users"** so
-the target path is `C:\Program Files\Python38`.
-
-```powershell
-git clone <your-repo-url> E:\project\voice-indentification
-cd E:\project\voice-indentification
-
-py -3.8 -m venv .venv
-.venv\Scripts\python -m pip install -U pip
-.venv\Scripts\python -m pip install -r requirements.txt -r requirements-dev.txt
+```
+E:\Project\voice-indentification
 ```
 
-Verify before copying anything:
+Note the spelling: **indentification**, with the `n`. It is a typo in the
+original directory name and it is now load-bearing — see §4.
+
+Use a copy that preserves the whole tree. `robocopy` from the USB drive:
 
 ```powershell
-$env:PYTHONPATH = "src"
-.venv\Scripts\python -m speakerid.cli verify-models
-.venv\Scripts\python -m pytest
+robocopy D:\voice-indentification E:\Project\voice-indentification /E
 ```
 
-`verify-models` checksums each `.onnx` against `models/MANIFEST.json`.
-`pytest` should report **255 passed, 1 skipped**.
+Leave `data\` behind if the source machine has one. It holds the encrypted
+voiceprint database and the PBKDF2 salt, and a new site starts clean. If you
+deliberately migrate an existing database you must copy `data\.salt` with it
+**and** use the same passphrase, or every embedding fails to decrypt — and
+moving voiceprints between machines carries legal weight (`docs/DPIA.md`).
 
-### Optional insurance
-
-If the copied venv ever misbehaves on the target, being able to rebuild it
-offline saves a trip. One command, ~140 MB:
+## 2. Activate
 
 ```powershell
-.venv\Scripts\python -m pip download -r requirements.txt -r requirements-dev.txt -d wheels
+cd E:\Project\voice-indentification
+venv\Scripts\Activate.ps1
 ```
 
-Carry `wheels\` with the project. It is already gitignored.
+If PowerShell refuses with an execution-policy error, either use `cmd`:
+
+```
+venv\Scripts\activate.bat
+```
+
+or allow scripts for that one shell:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+```
+
+## 3. Confirm the copy survived
+
+```powershell
+python -c "import sys; print(sys.version); print(sys.prefix)"
+speakerid verify-models
+pytest
+```
+
+Expected:
+
+* `3.8.10`, prefix `E:\Project\voice-indentification\venv`
+* three `ok` lines from `verify-models` (SHA-256 against `models\MANIFEST.json`)
+* **255 passed, 2 skipped** in about 2.5 minutes
+
+The two skips are deliberate and `pytest -rs` names them: a POSIX
+file-permission test that cannot apply on Windows, and the PyTorch↔ONNX
+parity test, which needs `SPEAKERID_REFERENCE_CHECKPOINT` pointing at a
+reference checkpoint that is not shipped.
+
+If those three commands pass, the system is installed.
 
 ---
 
-## 2. TARGET machine (offline)
+## 4. Why the path must match exactly
 
-1. Install **the same Python 3.8.10**, same installer, **same "for all users"
-   option**, so it lands at `C:\Program Files\Python38` again.
-2. Copy the whole project folder to **the identical path**,
-   `E:\project\voice-indentification`, `.venv` included.
+`venv\` is not relocatable. Two things inside it hold absolute paths:
 
-Then confirm it survived the move:
+* `venv\pyvenv.cfg` records `home = E:\Project\voice-indentification\python38`,
+  which is where the interpreter and the **entire standard library** are
+  loaded from. A Windows venv contains no stdlib of its own; `venv\Lib\` holds
+  only `site-packages`.
+* The generated `.exe` launchers in `venv\Scripts\` (`pip.exe`, `pytest.exe`,
+  `black.exe`, …) each embed the absolute path of `venv\Scripts\python.exe`.
 
-```powershell
-cd E:\project\voice-indentification
-$env:PYTHONPATH = "src"
-.venv\Scripts\python -c "import numpy, onnxruntime, soundfile; print('ok')"
-.venv\Scripts\python -m speakerid.cli verify-models
-.venv\Scripts\python -m pytest
-```
+Copy the tree somewhere else and both break. If you must move it, edit the
+`home =` line in `venv\pyvenv.cfg` to the new location; the `.exe` launchers
+then still need regenerating, so prefer `python -m pip`, `python -m pytest`
+and `python -m speakerid.cli` over them until you do.
 
-If those three pass, the system is installed.
+Two things are deliberately relocation-proof and need no fixing:
 
-### If the venv does not start
+* `venv\Lib\site-packages\_speakerid_src.pth` contains the relative path
+  `..\..\..\src`, which is how `import speakerid` works without a `pip install`
+  and without setting `PYTHONPATH`.
+* `venv\Scripts\speakerid.bat` calls `%~dp0python.exe`, relative to itself.
 
-Almost always the base Python is missing or at a different path. Check what
-the venv expects:
+## 5. Why `python38\` is in the folder
 
-```powershell
-type .venv\pyvenv.cfg
-```
+Because the alternative is fragile. Without it, `venv\pyvenv.cfg` points at
+whatever Python 3.8 is installed on the machine — originally
+`C:\Users\Administrator\AppData\Local\Programs\Python\Python38`. That requires
+the offline machine to have the same Windows username, the same per-user
+install location and the same patch release. Any mismatch and the venv will
+not start.
 
-and confirm that `home = ...` exists on this machine. If it does not, either
-install Python there, or rebuild the venv offline from the `wheels\` folder:
+`python38\` is a verbatim copy of a CPython 3.8.10 install, 62 MB against
+venv's 3.2 GB. It makes the tree depend on nothing outside itself.
 
-```powershell
-rmdir /s /q .venv
-py -3.8 -m venv .venv
-.venv\Scripts\python -m pip install --no-index --find-links=wheels -r requirements.txt -r requirements-dev.txt
-```
+This was verified, not assumed: with the machine's own Python 3.8 renamed out
+of the way, the full suite still passes and every dependency still imports.
 
-### What not to copy
-
-Leave `data\` behind. It holds the encrypted voiceprint database and the
-PBKDF2 salt, and the target should start clean. If you deliberately migrate an
-existing enrolment database you must copy `data\.salt` with it **and** use the
-same passphrase, or every embedding fails to decrypt. Moving voiceprints
-between machines also carries legal weight — see `docs/DPIA.md`.
+The one external requirement left is the Microsoft Visual C++ runtime, which
+`numpy`, `onnxruntime` and `torch` link against. `vcruntime140.dll` and
+`vcruntime140_1.dll` are inside `python38\`, and the rest (the Universal CRT)
+ships with Windows 10 / Server 2016 and later.
 
 ---
 
-## 3. It still will not identify anyone
+## 6. What is in the tree
+
+| Folder | Size | What |
+|---|---|---|
+| `venv\` | 3.2 GB | Packages. `requirements.lock.txt` records exactly what. |
+| `python38\` | 62 MB | CPython 3.8.10, stdlib, `python38.dll`, VC runtime. |
+| `models\` | 25 MB | The three ONNX files + `MANIFEST.json`. |
+| `src\`, `scripts\`, `tests\`, `config\`, `docs\` | small | The project. |
+
+`venv\` is large because PyTorch is in it (~2.5 GB). PyTorch never runs on a
+deployed device — inference is ONNX Runtime only — but it is the only way to
+re-export a model or to fine-tune AASIST-L on replay recordings, which
+`docs/FIRST_RUN.md` shows is necessary before the countermeasure protects
+anything. On an offline machine it cannot be added later, so it is included.
+
+`venv\` and `python38\` are `.gitignore`d. They are binaries, not source, and
+they travel by USB.
+
+## 7. You cannot install anything on the target
+
+There is no wheelhouse and no package index. `pip install` will fail, by
+design. If you need a package that is not in `requirements.lock.txt`, it has
+to be installed on a connected machine and the tree re-copied.
+
+For the same reason: **keep the USB copy.** It is the only way back if `venv\`
+is damaged.
+
+---
+
+## 8. Everyday commands
+
+With the venv activated:
+
+```powershell
+pytest                         # 255 passed, 2 skipped
+python -m ruff check .         # lint  (python38\ and venv\ are excluded)
+python -m black .              # format
+python -m mypy                 # type check, strict, on src\
+speakerid --help               # the CLI
+speakerid status               # models, thresholds, calibration state
+```
+
+## 9. It runs, but it will not identify anyone
 
 `config\thresholds.yaml` ships empty and the loader refuses to default it.
-That is deliberate (CLAUDE.md §8) and it is the last step:
+That is deliberate (CLAUDE.md §8), and it is the last install step:
 
 ```powershell
-.venv\Scripts\python -m speakerid.cli status      # shows: thresholds NOT CALIBRATED
-.venv\Scripts\python -m speakerid.cli calibrate --trials trials.csv ^
-    --cm-trials cm_trials.csv --identification-trials ident.csv ^
+speakerid status                  # thresholds: NOT CALIBRATED
+speakerid calibrate --trials trials.csv --cm-trials cm_trials.csv `
+    --identification-trials ident.csv `
     --target-far 0.001 --cm-target-far 0.05 --site "<this room>"
 ```
 
@@ -129,51 +180,9 @@ Calibrate on recordings made on that hardware, in that room. Never copy a
 calibrated `thresholds.yaml` between sites: the numbers describe one
 microphone, one acoustic environment, one enrolled population.
 
----
+## 10. Windows note: the salt file
 
-## Everyday commands
-
-Set `PYTHONPATH` once per shell, or permanently with `setx PYTHONPATH src`
-(reopen the terminal afterwards).
-
-```powershell
-.venv\Scripts\python -m pytest                              # tests
-.venv\Scripts\python -m ruff check src scripts tests        # lint
-.venv\Scripts\python -m black src scripts tests             # format
-.venv\Scripts\python -m mypy                                # type check
-.venv\Scripts\python -m speakerid.cli --help                # the CLI
-```
-
-## The three requirements files
-
-| File | When |
-|---|---|
-| `requirements.txt` | always — running the system |
-| `requirements-dev.txt` | tests, lint, format, type check |
-| `requirements-export.txt` | **only** to re-export or fine-tune a model (~2 GB, PyTorch) |
-
-`requirements-export.txt` is separate on purpose. Inference runs through ONNX
-Runtime; PyTorch is a development-only tool and never belongs on a deployed
-device (CLAUDE.md §4). The three models are already exported and committed, so
-you need it only when changing a model — most likely fine-tuning AASIST-L on
-replay data, which `docs/FIRST_RUN.md` explains is necessary before the
-countermeasure protects anything.
-
-The optional localhost API additionally needs `fastapi` and `uvicorn`; the CLI
-does not.
-
-## Windows notes
-
-**The PBKDF2 salt cannot be permission-restricted.** Windows ignores POSIX
-mode bits, so `data\.salt` inherits the directory ACL instead of being created
-`0600`. The code logs a warning, and the POSIX-only test is skipped on Windows
-while a separate test still checks the salt is created correctly. The salt is
-not itself a secret — the passphrase carries the strength — but restrict
+Windows ignores POSIX mode bits, so `data\.salt` inherits the directory ACL
+instead of being created `0600`. The code logs a warning on creation. The salt
+is not itself a secret — the passphrase carries the strength — but restrict
 `data\` with an ACL and prefer full-disk encryption.
-
-**Verified from Linux, not on Windows.** Every pin has a genuine
-`cp38`/`win_amd64` wheel, both requirements files resolve for that platform,
-and path handling is separator-safe (`MANIFEST.json` keys are normalised, and
-SQLAlchemy accepts `sqlite:///C:\...` URLs). The test suite has never actually
-been run on Windows — `pytest` on the BUILD machine will tell you in about 40
-seconds.
