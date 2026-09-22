@@ -175,7 +175,8 @@ not an install input. The four intent files are `requirements.txt` (runtime),
     ├── SETUP.md                # the only install procedure; see §3
     ├── MODELS.md               # what the three models are: papers vs the
     │                           # structure measured in the shipped .onnx
-    ├── FIRST_RUN.md            # bring-up record: what the real models did
+    ├── FIRST_RUN.md            # end-to-end verification record on real
+    │                           # voices, and what it did not prove
     ├── DEVIATIONS.md
     └── DPIA.md                 # data protection impact assessment, and the
                                 # operator sign-off on residual risk (§10)

@@ -269,12 +269,18 @@ On ASVspoof 2019 LA:
 
 **ASVspoof 2019 LA is synthetic speech** — text-to-speech and voice
 conversion. It is not a phone held up to a microphone. CLAUDE.md §10 flags the
-gap in advance; `docs/FIRST_RUN.md` then measured it, and the result was worse
-than the warning: on a real corpus the calibrated `cm_threshold` came out at
-**0.003**, because the model assigns near-zero bona-fide probability to
-genuine and replayed audio alike once the recording conditions leave its
-training distribution. A threshold that low is not a detector, it is a
-formality.
+gap in advance; `docs/FIRST_RUN.md` then measured it twice, on two corpora and
+two operating systems, and the result was worse than the warning. The
+countermeasure scores **12.5% EER** on simulated replay against its published
+0.99%, and the calibrated `cm_threshold` collapses to hundredths (0.003 in the
+first run, 0.0196 in the second) because the model assigns near-zero
+bona-fide probability to genuine and replayed audio alike once the recording
+conditions leave its training distribution.
+
+At that operating point it manages to be wrong in both directions at once: it
+**rejected 29% of genuine users** end to end, and still let one replay in 24
+past the liveness stage, where the margin check caught it. That is not a
+threshold that needs tuning.
 
 Nothing about the architecture is at fault. It is a domain mismatch, and the
 fix is the one §10 already specifies: fine-tune on physical replay recordings

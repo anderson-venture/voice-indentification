@@ -151,11 +151,16 @@ real ONNX weights**: 255 tests pass and 2 skip, and `ruff`, `black` and
 `mypy --strict` are clean. The three models load, warm up and run, and
 `verify-models` matches every checksum.
 
-The system has been run end to end on real voices — see
-[docs/FIRST_RUN.md](docs/FIRST_RUN.md) for the measured numbers and, more
-importantly, for what they do not show. The short version: identification
-works well, **AASIST-L does not work as shipped** and must be fine-tuned on
-physical replay before it protects anything.
+The system has been run end to end on real voices through the CLI — 40
+LibriSpeech speakers, six enrolled, AS-Norm on, encrypted store, erasure
+verified. **22 of 24 checks passed, and both failures are the countermeasure.**
+Identification was flawless: 0 misidentifications, 48/48 impostors rejected,
+no replay admitted. AASIST-L then rejected **29% of genuine users** while
+still letting one replay in 24 past the liveness stage.
+
+**AASIST-L does not work as shipped** and must be fine-tuned on physical
+replay before it protects anything. [docs/FIRST_RUN.md](docs/FIRST_RUN.md)
+has the numbers and, more importantly, what they do not show.
 
 Outstanding: milestone 7 must be redone on the operator's own recordings, and
 milestone 9 has deliberately not been started.
