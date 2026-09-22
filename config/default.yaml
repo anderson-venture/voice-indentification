@@ -1,0 +1,131 @@
+# Default configuration. Every tunable in the system lives in this file or in
+# thresholds.yaml. A float literal in a decision path is a bug (CLAUDE.md §12).
+#
+# Site overrides: pass --config <file> to the CLI; keys are deep-merged over
+# these defaults. Decision thresholds live ONLY in thresholds.yaml and are
+# never defaulted here -- see §8.
+
+audio:
+  sample_rate: 16000          # Hz. The ONLY rate that crosses a module boundary.
+  channels: 1
+  dtype: float32
+  peak_normalize_dbfs: -3.0   # target peak after load; null disables
+  max_input_seconds: 600.0    # refuse absurd inputs rather than OOM
+
+vad:
+  # Silero VAD v5 operating parameters. Tune `threshold` on YOUR audio first --
+  # CLAUDE.md §9 puts this at the top of the robustness priority list.
+  threshold: 0.5
+  neg_threshold: 0.35         # hysteresis: leave speech below this
+  window_samples: 512         # Silero v5 requires exactly 512 @ 16 kHz
+  min_speech_ms: 250
+  min_silence_ms: 100
+  speech_pad_ms: 30
+  max_speech_seconds: 60.0
+
+enhance:
+  # OFF by default and it stays off until a measured win on the operator's own
+  # eval set is recorded in docs/DEVIATIONS.md (CLAUDE.md §9.5).
+  enabled: false
+  backend: none               # none | spectral_gate
+
+embedder:
+  model_path: models/embed/redimnet2_b2.onnx
+  # null derives an id from the model filename plus a short content hash, so
+  # that embeddings made with one export are never scored against another.
+  model_id: null
+  embedding_dim: 192
+  window_seconds: 4.0         # 64000 samples
+  max_window_seconds: 6.0     # 96000 samples
+  multi_window:
+    # When >8 s of speech is available, window it and mean-pool the embeddings
+    # (CLAUDE.md §5). Below the trigger we centre-crop a single window.
+    enabled: true
+    trigger_seconds: 8.0
+    hop_seconds: 2.0
+    max_windows: 8
+
+countermeasure:
+  model_path: models/cm/aasist_l.onnx
+  input_samples: 64600        # ~4.04 s @ 16 kHz, fixed by the AASIST-L export
+  bona_fide_index: 1          # softmax index that means "live human"
+
+vad_model:
+  model_path: models/vad/silero_vad.onnx
+
+runtime:
+  # One session per model, created at startup and warmed. Never per request.
+  intra_op_num_threads: 2
+  inter_op_num_threads: 1
+  execution_mode: sequential  # sequential | parallel
+  graph_optimization_level: all
+  providers: ["CPUExecutionProvider"]
+  warmup_iterations: 2
+  verify_manifest: true       # SHA-256 check against models/MANIFEST.json
+
+scoring:
+  asnorm:
+    enabled: true
+    cohort_path: models/cohort.npz
+    top_n: 300                # cohort size used per side of the normalization
+    epsilon: 1.0e-6           # floor on cohort std, avoids divide-by-zero
+  aggregation: max            # max | centroid -- score vs a person's embeddings
+
+enrollment:
+  min_utterances: 3
+  max_utterances: 5
+  min_speech_seconds_per_utterance: 4.0
+  min_snr_db: 10.0
+  min_self_cosine: 0.5        # reject utterance too far from the person's others
+  policy_version: "2026-09-01"
+
+challenge:
+  # Challenge-response, built in from day one (CLAUDE.md §10). The system
+  # generates the digits; verification of the spoken digits is delegated to a
+  # keyword model that is out of scope for this milestone -- until one is wired
+  # in, `require_pass` keeps the flow honest by failing closed.
+  enabled: true
+  num_digits: 5
+  digit_alphabet: "0123456789"
+  ttl_seconds: 30.0
+  require_pass: true          # fail closed when no verifier is attached
+  max_attempts: 3
+
+calibration:
+  # Engineering settings for a calibration RUN. These are not decision
+  # thresholds -- calibrate.py consumes them and writes the decision thresholds
+  # into config/thresholds.yaml.
+  min_speech_sec: 2.0         # gate used while extracting calibration embeddings;
+                              # calibrate.py records it as the deployed min_speech_sec
+  target_far: 0.001           # access control: FAR <= 0.1% (CLAUDE.md §8)
+  dcf_p_target: 0.01
+  dcf_c_miss: 1.0
+  dcf_c_false_alarm: 1.0
+  margin_z: 1.0               # fallback margin = margin_z * std(impostor scores),
+                              # used only when no identification trials are supplied
+
+database:
+  url: "sqlite:///data/speakerid.db"
+  retention_months: 24        # hard ceiling per CLAUDE.md §11; 0 disables enrolment
+  purge_on_startup: true
+  purge_interval_seconds: 3600
+  retain_audio: false         # only an explicit evaluation flag may flip this
+
+crypto:
+  # Key comes from the OS keyring or an operator passphrase. NEVER committed.
+  key_source: passphrase      # passphrase | keyring | env
+  env_var: SPEAKERID_KEY
+  keyring_service: speakerid
+  keyring_user: embeddings
+  kdf_iterations: 390000
+  salt_path: data/.salt
+
+logging:
+  level: INFO
+  format: "%(asctime)s %(levelname)s %(name)s %(message)s"
+  file: null                  # null = stderr only
+  # Logs carry person IDs and scores, never names and never audio (§11).
+
+api:
+  host: "127.0.0.1"           # localhost only, never 0.0.0.0
+  port: 8077

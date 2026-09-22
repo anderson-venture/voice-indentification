@@ -1,0 +1,86 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "speakerid"
+version = "0.1.0"
+description = "Offline speaker recognition and anti-spoofing"
+requires-python = ">=3.8"
+
+[project.scripts]
+speakerid = "speakerid.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+# The deployment target is CPython 3.8; do not let a formatter emit newer syntax.
+target-version = ["py38"]
+
+[tool.ruff]
+line-length = 100
+# This is the setting that actually enforces the hard constraint in CLAUDE.md
+# §2: ruff flags 3.9+ builtin generics, 3.10+ `X | None` unions, match
+# statements and the rest, which would otherwise only fail on the device.
+target-version = "py38"
+src = ["src", "scripts", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = [
+    # UP006/UP007/UP035/UP045 would "modernise" typing into 3.9+/3.10+ syntax,
+    # which is exactly what must not happen here.
+    "UP006", "UP007", "UP035",
+    # UP004/UP008/UP010/UP024/UP032 push away from the explicit 2/3-era idioms
+    # (explicit object base, super(Cls, self), .format) used deliberately for
+    # 3.8 clarity.
+    "UP004", "UP008", "UP010", "UP024", "UP032",
+    # UP030/UP031 would strip the explicit indices from .format() calls. The
+    # explicit form is kept deliberately: it is unambiguous under 3.8 and
+    # survives reordering of arguments in long operator-facing messages.
+    "UP030", "UP031",
+    "SIM105",  # contextlib.suppress hides which exception was expected
+    "B905",    # zip(strict=) is 3.10+
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501", "C408"]
+"scripts/*" = ["C408"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# No network in the test suite, ever (CLAUDE.md §12).
+addopts = "-q --strict-markers"
+filterwarnings = ["error::DeprecationWarning:speakerid.*"]
+
+[tool.mypy]
+python_version = "3.8"
+files = ["src"]
+strict = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+# Third-party packages without type stubs, plus the two optional API deps that
+# are not installed on the device at all.
+module = [
+    "soundfile", "onnxruntime", "scipy.*", "yaml", "librosa", "keyring",
+    "fastapi", "fastapi.*", "uvicorn",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The scripts are development and operator tooling, not shipped code. CLAUDE.md
+# §12 requires strict typing of src/; these are checked by ruff and the tests.
+module = ["scripts.*"]
+follow_imports = "skip"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+# Decorator-based frameworks: click's command decorators and FastAPI's route
+# decorators are untyped from mypy's point of view, which makes every handler
+# "untyped" by inference rather than by authorship. The function bodies are
+# still fully checked.
+module = ["speakerid.api", "speakerid.cli"]
+disallow_untyped_decorators = false

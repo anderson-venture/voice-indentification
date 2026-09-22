@@ -1,0 +1,31 @@
+# SITE-SPECIFIC DECISION THRESHOLDS -- INTENTIONALLY EMPTY.
+#
+# This file is shipped blank on purpose. The system refuses to make a decision
+# until it is filled in, and it must be filled in by running
+#
+#     python -m speakerid.cli calibrate --trials <your-trials.csv> --target-far 0.001
+#
+# on recordings made on the deployment hardware in the deployment room.
+#
+# Do NOT paste published benchmark numbers here. Published EERs (ReDimNet2-B2
+# 0.57% on VoxCeleb1-O, CAM++ 0.71%) are clean-speech 1-to-1 verification.
+# This deployment is open-set 1-to-N in noise, where false accepts scale with
+# the number of enrolled people. See CLAUDE.md §8.
+#
+# The four keys calibrate.py writes, for reference only -- the commented values
+# are starting points for a calibration run, NOT values you may ship:
+#
+# cm_threshold: 0.50          # bona-fide probability floor
+# accept_threshold: 0.55      # cosine, after AS-Norm
+# margin_threshold: 0.08      # top1 - top2 must exceed this
+# min_speech_sec: 2.0
+#
+# Note on scale: accept_threshold and margin_threshold live on whatever scale
+# scoring produces -- raw cosine in [-1, 1] with AS-Norm off, an unbounded
+# z-score with it on. calibrate.py derives them on exactly the scale decide()
+# sees and records `asnorm_enabled` in the provenance below, so the two are
+# never ambiguous. cm_threshold is always a probability in [0, 1].
+#
+# calibrate.py also records provenance, which the loader logs on startup:
+# calibrated_at, calibrated_by, target_far, measured_far, measured_frr,
+# n_enrolled, n_trials, site.

@@ -1,0 +1,15 @@
+# Model export / fine-tuning only. NOT needed to run the system or the tests,
+# and never installed on a deployed device: inference runs through ONNX
+# Runtime and PyTorch is development-only (CLAUDE.md §4).
+#
+# ~2 GB installed. You need it only to:
+#   * re-export a model   -- scripts/export_aasist.py, scripts/export_onnx.py
+#   * fine-tune AASIST-L on replay data (§10) or the embedder (§9.6)
+#
+# CPU-only build (no CUDA):
+#   pip install -r requirements-export.txt --extra-index-url https://download.pytorch.org/whl/cpu
+
+torch==2.4.1
+torchaudio==2.4.1
+onnx==1.16.2
+onnxsim==0.4.36

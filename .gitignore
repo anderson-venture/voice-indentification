@@ -1,0 +1,37 @@
+# Never commit: biometric data, keys, or a local environment.
+#
+# NOTE: directory patterns below are anchored with a leading slash on purpose.
+# An unanchored "audio/" matches at ANY depth and silently excluded
+# src/speakerid/audio/ -- the whole front-end package -- from a clone.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Databases hold encrypted voiceprints. Not in git, ever.
+/data/
+*.db
+*.sqlite
+
+# Key material.
+*.salt
+.salt
+*.key
+
+# Calibration and evaluation output. config/thresholds.yaml IS tracked, but
+# only because the blank-with-warnings version is the one that ships; a
+# calibrated file is site-specific and must never be committed.
+/reports/
+*.npz
+
+# Recorded audio. Never commit a real voice. (tests/fixtures/*.wav is
+# synthetic and deliberately tracked.)
+/audio/
+/recordings/
+
+# The ONNX models ARE committed: 25 MB total, largest file 22 MB, under
+# GitHub's limits. CLAUDE.md §4 allows git; it keeps `git clone` one step,
+# and MANIFEST.json checksums catch a corrupt copy on load.

@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-09-20T15:11:55.361696+00:00",
+  "missing": [
+    "embed/campplus.onnx"
+  ],
+  "models": {
+    "cm/aasist_l.onnx": {
+      "bytes": "780552",
+      "licence": "MIT",
+      "model": "AASIST-L",
+      "notes": "85,306 params; input [1, 64600], output [1, 2] logits.",
+      "sha256": "95ad14a1070741b4b900db207d25a88436e09e44a45b143d84e47bf81f971933",
+      "slot": "countermeasure",
+      "source": "https://github.com/clovaai/aasist"
+    },
+    "embed/redimnet2_b2.onnx": {
+      "bytes": "22193734",
+      "licence": "Apache-2.0",
+      "model": "ReDimNet2-B2",
+      "notes": "3.6M params / 0.95 GMACs; input [1, N] 64000..96000, output [1, 192].",
+      "sha256": "a7586b34c8db1bbf32c64efc2b269be54f66787e50320c4472614bbe95218a81",
+      "slot": "embedder",
+      "source": "https://github.com/IDRnD/redimnet"
+    },
+    "vad/silero_vad.onnx": {
+      "bytes": "2327524",
+      "licence": "MIT",
+      "model": "Silero VAD v5",
+      "notes": "~1.8 MB ONNX; 512-sample windows at 16 kHz.",
+      "sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+      "slot": "vad",
+      "source": "https://github.com/snakers4/silero-vad"
+    }
+  },
+  "note": "Models are immutable binary assets. Every SHA-256 here is verified on load; a mismatch refuses to start rather than running a model nobody recorded.",
+  "schema": 1
+}
