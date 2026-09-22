@@ -173,6 +173,8 @@ not an install input. The four intent files are `requirements.txt` (runtime),
 │   └── ...
 └── docs/
     ├── SETUP.md                # the only install procedure; see §3
+    ├── MODELS.md               # what the three models are: papers vs the
+    │                           # structure measured in the shipped .onnx
     ├── FIRST_RUN.md            # bring-up record: what the real models did
     ├── DEVIATIONS.md
     └── DPIA.md                 # data protection impact assessment, and the
@@ -237,8 +239,14 @@ raw audio (any rate)
   -> decide()
 ```
 
-**Run the countermeasure before the embedder**, not after. It is 40× cheaper and
-short-circuits the expensive path on rejection.
+**Run the countermeasure before the embedder**, not after. ~~It is 40× cheaper
+and short-circuits the expensive path on rejection.~~ **Measured false.** On the
+shipped exports AASIST-L is 1.15–2.0× *slower* than the embedder, because an
+85K-parameter model exported into 2,670 graph nodes is bound by graph overhead,
+not arithmetic — `docs/MODELS.md` has the numbers and the likely fix.
+
+Keep the ordering anyway. The reason is not cost: it is that a replay must be
+rejected before a voiceprint is extracted from it (§11).
 
 **Never feed non-speech to the embedder.** Silence, keyboard noise and HVAC hum
 produce confident-looking garbage embeddings. This is the single most common

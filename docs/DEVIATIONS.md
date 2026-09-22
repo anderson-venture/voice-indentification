@@ -331,6 +331,35 @@ passed once". The suite had passed on Linux, where the flag is meaningless.
 
 ---
 
+## 6d. The countermeasure is not cheaper than the embedder
+
+§6 orders the pipeline countermeasure-first and justifies it as "40× cheaper".
+Timed on the shipped exports — one 4 s window, ONNX Runtime CPU, median of 60
+runs after warmup — the opposite holds at every thread count:
+
+| intra-op threads | ReDimNet-B2 | AASIST-L |
+|---|---|---|
+| 1 | 283 ms | 565 ms |
+| 2 | 344 ms | 535 ms |
+| 4 | 432 ms | 498 ms |
+
+AASIST-L has 85K parameters against ReDimNet's 5.1M, so the arithmetic really
+is ~60× lighter. The export is not. It is 2,670 graph nodes — 973 `Constant`,
+228 `Shape`, 216 `Unsqueeze`, 64 `Range` — because the sinc filterbank is
+rebuilt at inference time rather than baked into a constant. ReDimNet spends
+836 nodes and 108 convolutions, which ONNX Runtime is good at.
+
+**The ordering is unchanged.** Rejecting a replay before extracting a
+voiceprint from it is a §11 property and does not depend on which model is
+faster. What changes is the latency budget: roughly 0.9 s per decision at two
+threads, not the near-free liveness check §6 implies. Re-exporting AASIST-L
+with a constant filterbank is the obvious milestone-9 target, ahead of INT8.
+
+`docs/MODELS.md` carries the full measurement alongside the architecture of
+all three models.
+
+---
+
 ## 7. Not implemented
 
 Honest scope statement. None of these are stubbed as if they worked.

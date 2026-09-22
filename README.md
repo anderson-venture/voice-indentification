@@ -34,8 +34,10 @@ raw audio (any rate)
   -> decide()
 ```
 
-The countermeasure runs **before** the embedder: it is ~40× cheaper and
-short-circuits the expensive path. Non-speech never reaches either model.
+The countermeasure runs **before** the embedder so that a replay is rejected
+before a voiceprint is ever extracted from it. Not for speed — measured, it is
+the slower of the two ([docs/MODELS.md](docs/MODELS.md)). Non-speech never
+reaches either model.
 
 `decide()` returns one of four outcomes, never a bare name:
 
@@ -139,7 +141,7 @@ src/speakerid/
   pipeline.py challenge.py metrics.py cli.py api.py
 scripts/      fetch_models, export_onnx, build_cohort, calibrate, evaluate,
               make_fixtures, make_env_archive (cuts the SETUP §1b zip)
-docs/         SETUP.md, FIRST_RUN.md, DEVIATIONS.md, DPIA.md
+docs/         SETUP.md, MODELS.md, FIRST_RUN.md, DEVIATIONS.md, DPIA.md
 ```
 
 ## Status
