@@ -83,17 +83,31 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 ## 3. Confirm the copy survived
 
+One command answers it:
+
 ```powershell
-python -c "import sys; print(sys.version); print(sys.prefix)"
-speakerid verify-models
+python -m scripts.check_install
+```
+
+It exits 0 when this copy works on this machine, and names what is wrong when
+it does not. It checks that the interpreter and standard library are the ones
+inside the folder, that no `sys.path` entry points outside it, that every
+binary loads and the numeric kernels actually execute on this CPU, that the
+three models match their checksums and run a real inference, and that the
+pipeline can be constructed with sockets forcibly disabled. It writes nothing
+and leaves nothing behind.
+
+The last two lines report deployment steps that are *expected* to be
+outstanding on a fresh copy — no calibrated thresholds, no AS-Norm cohort.
+Those are §9, not faults.
+
+Then the full suite, which takes about 2.5 minutes:
+
+```powershell
 pytest
 ```
 
-Expected:
-
-* `3.8.10`, prefix `E:\Project\voice-indentification\venv`
-* three `ok` lines from `verify-models` (SHA-256 against `models\MANIFEST.json`)
-* **255 passed, 2 skipped** in about 2.5 minutes
+Expected: **255 passed, 2 skipped**.
 
 The two skips are deliberate and `pytest -rs` names them: a POSIX
 file-permission test that cannot apply on Windows, and the PyTorch↔ONNX
